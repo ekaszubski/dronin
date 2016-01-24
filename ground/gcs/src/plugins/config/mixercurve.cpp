@@ -30,6 +30,7 @@
 #include <math.h>
 #include "mixercurve.h"
 #include "dblspindelegate.h"
+#include <iostream>
 
 MixerCurve::MixerCurve(QWidget *parent) :
     QFrame(parent),
@@ -87,6 +88,7 @@ MixerCurve::~MixerCurve()
 
 void MixerCurve::setMixerType(MixerCurveType curveType, bool isCurve1)
 {
+    std::cout << this << " -> MixerCurve::setMixerType(" << curveType << ", " << isCurve1 << ")" << std::endl;
     m_curveType = curveType;
 
     m_mixerUI->CurveMin->setMaximum(1.0);
@@ -124,19 +126,23 @@ void MixerCurve::setMixerType(MixerCurveType curveType, bool isCurve1)
         m_settings->setItemDelegateForRow(i, m_spinDelegate);
     }
 
+    std::cout << this << " -> MixerCurve::setMixerType(" << curveType << ", " << isCurve1 << ") --> MixerCurve::ResetCurve()" << std::endl;
     ResetCurve();
 }
 
 void MixerCurve::ResetCurve()
 {
+    std::cout << this << " -> MixerCurve::ResetCurve()" << std::endl;
     m_mixerUI->CurveMin->setValue(m_mixerUI->CurveMin->minimum());
     m_mixerUI->CurveMax->setValue(m_mixerUI->CurveMax->maximum());
     m_mixerUI->CurveType->setCurrentIndex(m_mixerUI->CurveType->findText("Linear"));
 
+    std::cout << this << " -> MixerCurve::ResetCurve() --> MixerCurve::initLinearCurve(...)" << std::endl;
     initLinearCurve(MixerCurveWidget::NODE_NUMELEM, getCurveMax(), getCurveMin());
 
     m_curve->activateCommand("Linear");
 
+    std::cout << this << " -> MixerCurve::ResetCurve() --> MixerCurve::UpdateSettingsTable()" << std::endl;
     UpdateSettingsTable();
 }
 
@@ -230,6 +236,7 @@ void MixerCurve::UpdateCurveUI()
 
 void MixerCurve::GenerateCurve()
 {
+   std::cout << this << " -> MixerCurve::GenerateCurve()" << std::endl;
    double scale;
    double newValue;
 
@@ -280,6 +287,7 @@ void MixerCurve::GenerateCurve()
        }
    }
 
+   std::cout << this << " -> MixerCurve::GenerateCurve() --> MixerCurve::setCurve(...)" << std::endl;
    setCurve(&points);
 }
 
@@ -288,7 +296,9 @@ void MixerCurve::GenerateCurve()
   */
 void MixerCurve::initCurve (const QList<double>* points)
 {
+    std::cout << this << " -> MixerCurve::initCurve(...) --> MixerCurveWidget::setCurve(...)" << std::endl;
     m_curve->setCurve(points);
+    std::cout << this << " -> MixerCurve::initCurve(...) --> MixerCurve::UpdateSettingsTable)" << std::endl;
     UpdateSettingsTable();
 }
 QList<double> MixerCurve::getCurve()
@@ -297,9 +307,11 @@ QList<double> MixerCurve::getCurve()
 }
 void MixerCurve::initLinearCurve(int numPoints, double maxValue, double minValue)
 {
+    std::cout << this << " -> MixerCurve::initLinearCurve(" << numPoints << ", " << maxValue << ", " << minValue << ")" << std::endl;
     setMin(minValue);
     setMax(maxValue);
 
+    std::cout << this << " -> MixerCurve::initLinearCurve(" << numPoints << ", " << maxValue << ", " << minValue << ") --> MixerCurveWidget::initLinearCurve(...)" << std::endl;
     m_curve->initLinearCurve(numPoints, maxValue, minValue);
 
     if (m_spinDelegate)
@@ -307,7 +319,9 @@ void MixerCurve::initLinearCurve(int numPoints, double maxValue, double minValue
 }
 void MixerCurve::setCurve(const QList<double>* points)
 {
+    std::cout << this << " -> MixerCurve::setCurve(...) --> MixerCurveWidget::setCurve(...)" << std::endl;
     m_curve->setCurve(points);
+    std::cout << this << " -> MixerCurve::setCurve(...) --> MixerCurve::UpdateSettingsTable()" << std::endl;
     UpdateSettingsTable();
 }
 void MixerCurve::setMin(double value)
@@ -363,6 +377,7 @@ void MixerCurve::UpdateSettingsTable()
 
 void MixerCurve::SettingsTableChanged()
 {
+    std::cout << this << " -> MixerCurve::SettingsTableChanged()" << std::endl;
     QList<double> points;
 
     for (int i=0; i < m_settings->rowCount(); i++)
@@ -376,6 +391,7 @@ void MixerCurve::SettingsTableChanged()
     m_mixerUI->CurveMin->setValue(points.first());
     m_mixerUI->CurveMax->setValue(points.last());
 
+    std::cout << this << " -> MixerCurve::SettingsTableChanged() --> MixerCurveWidget::setCurve(...)" << std::endl;
     m_curve->setCurve(&points);
 }
 
@@ -440,19 +456,23 @@ void MixerCurve::CurveTypeChanged()
 
 void MixerCurve::CurveMinChanged(double value)
 {
+    std::cout << this << " -> MixerCurve::CurveMinChanged(" << value << ")" << std::endl;
     QList<double> points = m_curve->getCurve();
     points.removeFirst();
     points.push_front(value);
+    std::cout << this << " -> MixerCurve::CurveMinChanged(" << value << ") --> MixerCurve::setCurve()" << std::endl;
     setCurve(&points);
 }
 
 void MixerCurve::CurveMaxChanged(double value)
 {
+    std::cout << this << " -> MixerCurve::CurveMaxChanged(" << value << ")" << std::endl;
     // the max changed so redraw the curve
     //  mixercurvewidget::setCurve will trim any points above max
     QList<double> points = m_curve->getCurve();
     points.removeLast();
     points.append(value);
+    std::cout << this << " -> MixerCurve::CurveMaxChanged(" << value << ") --> MixerCurve::setCurve()" << std::endl;
     setCurve(&points);
 }
 

@@ -33,6 +33,7 @@
 #include <QObject>
 #include <QtGui>
 #include <QDebug>
+#include <iostream>
 
 /*
  * Initialize the widget
@@ -354,10 +355,13 @@ void MixerCurveWidget::setNegativeColor(QString color0, QString color1)
   */
 void MixerCurveWidget::initCurve(const QList<double>* points)
 {
+    std::cout << this << " -> MixerCurveWidget::initCurve()" << std::endl;
+
     if (points->length() < 2)
         return; // We need at least 2 points on a curve!
 
     // finally, set node positions
+    std::cout << this << " -> MixerCurveWidget::initCurve() --> MixerCurveWidget::setCurve(...)" << std::endl;
     setCurve(points);
 }
 
@@ -414,6 +418,7 @@ QList<double> MixerCurveWidget::getCurve() {
   */
 void MixerCurveWidget::initLinearCurve(int numPoints, double maxValue, double minValue)
 {
+    std::cout << this << " -> MixerCurveWidget::initLinearCurve(" << numPoints << ", " << maxValue << ", " << minValue << ")" << std::endl;
     double range = maxValue - minValue; // setRange(minValue, maxValue);
 
     QList<double> points;
@@ -421,6 +426,7 @@ void MixerCurveWidget::initLinearCurve(int numPoints, double maxValue, double mi
         double val = (range * ( i / (double)(numPoints-1) ) ) + minValue;
         points.append(val);
     }
+    std::cout << this << " -> MixerCurveWidget::initLinearCurve(" << numPoints << ", " << maxValue << ", " << minValue << ") --> MixerCurveWidget::initCurve(...)" << std::endl;
     initCurve(&points);
 }
 /**
@@ -428,6 +434,7 @@ void MixerCurveWidget::initLinearCurve(int numPoints, double maxValue, double mi
   */
 void MixerCurveWidget::setCurve(const QList<double>* points)
 {
+    std::cout << this << " -> MixerCurveWidget::setCurve(...){" << std::endl;
     curveUpdating = true;
 
     int ptCnt = points->count();
@@ -439,6 +446,8 @@ void MixerCurveWidget::setCurve(const QList<double>* points)
     qreal w = plot->boundingRect().width()/(ptCnt-1);
     qreal h = plot->boundingRect().height();
     for (int i=0; i<ptCnt; i++) {
+
+        std::cout << "-: " << points->at(i) << std::endl;
 
         double val = (points->at(i) < curveMin) ? curveMin : (points->at(i) > curveMax) ? curveMax : points->at(i);
 
@@ -453,6 +462,8 @@ void MixerCurveWidget::setCurve(const QList<double>* points)
         node->update();
     }
     curveUpdating = false;
+
+    std::cout << "}" << std::endl;
 
     update();
 
