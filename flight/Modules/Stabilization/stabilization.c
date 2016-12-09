@@ -483,6 +483,7 @@ static void stabilizationTask(void* parameters)
 
 		// A flag to track which stabilization mode each axis is in
 		static uint8_t previous_mode[MAX_AXES] = {255,255,255};
+		static bool axis_lock_set[MAX_AXES] = {false,false,false};
 
 		actuatorDesired.SystemIdentCycle = 0xffff;
 
@@ -631,25 +632,29 @@ static void stabilizationTask(void* parameters)
 				case STABILIZATIONDESIRED_STABILIZATIONMODE_AXISLOCK:
 					if (reinit) {
 						pids[PID_GROUP_RATE + i].iAccumulator = 0;
-					}
-
-					if (fabsf(stabDesiredAxis[i]) > max_axislock_rate) {
-						// While getting strong commands act like rate mode
-						rateDesiredAxis[i] = bound_sym(stabDesiredAxis[i], settings.ManualRate[i]);
-
-						// Reset accumulator
 						axis_lock_accum[i] = 0;
-					} else {
-						// For weaker commands or no command simply lock (almost) on no gyro change
-						axis_lock_accum[i] += (stabDesiredAxis[i] - gyro_filtered[i]) * dT_expected;
-						axis_lock_accum[i] = bound_sym(axis_lock_accum[i], max_axis_lock);
-
-						// Compute the inner loop setpoint
-						float tmpRateDesired = pid_apply(&pids[PID_GROUP_ATT + i], axis_lock_accum[i], dT_expected);
-						rateDesiredAxis[i] = bound_sym(tmpRateDesired, settings.MaximumRate[i]);
+						axis_lock_set[i] = false;
 					}
 
-					// Compute the inner loop
+					rateDesiredAxis[i] = bound_sym(stabDesiredAxis[i], settings.ManualRate[i]);
+
+					// reset the integral when we switch into rate mode
+					if (fabsf(stabDesiredAxis[i]) > max_axislock_rate) {
+						axis_lock_accum[i] = 0;
+						axis_lock_set[i] = false;
+					} else {
+						// once we've slowed down enough, switch to axislock
+						if (!axis_lock_set[i] && fabsf(gyro_filtered[i]) < max_axislock_rate/4.0f) axis_lock_set[i] = true;
+						if (axis_lock_set[i]) {
+							axis_lock_accum[i] += (stabDesiredAxis[i] - gyro_filtered[i]) * dT_expected;
+							axis_lock_accum[i] = bound_sym(axis_lock_accum[i], max_axis_lock);
+							// Compute the inner loop setpoint
+							float tmpRateDesired = pid_apply(&pids[PID_GROUP_ATT + i], axis_lock_accum[i], dT_expected);
+							// don't work harder than rate mode would at the transition point
+							rateDesiredAxis[i] = bound_sym(tmpRateDesired, fminf(settings.MaximumRate[i],max_axislock_rate));
+						}
+					}
+
 					actuatorDesiredAxis[i] = compute_inner_loop_precomp(PID_GROUP_RATE, i, rateDesiredAxis[i], gyro_filtered[i], dT_expected);
 					actuatorDesiredAxis[i] = bound_sym(actuatorDesiredAxis[i],1.0f);
 
