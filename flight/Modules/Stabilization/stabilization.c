@@ -631,25 +631,31 @@ static void stabilizationTask(void* parameters)
 				case STABILIZATIONDESIRED_STABILIZATIONMODE_AXISLOCK:
 					if (reinit) {
 						pids[PID_GROUP_RATE + i].iAccumulator = 0;
+						axis_lock_accum[i] = 0;
 					}
 
-					if (fabsf(stabDesiredAxis[i]) > max_axislock_rate) {
-						// While getting strong commands act like rate mode
-						rateDesiredAxis[i] = bound_sym(stabDesiredAxis[i], settings.ManualRate[i]);
+					rateDesiredAxis[i] = bound_sym(stabDesiredAxis[i], settings.ManualRate[i]);
+					// below max_axislock_rate:
+					// - as the stick approaches max_axislock_rate, axis_lock_accum should go to zero
+					// - at the same time, the proportion of desired rate from the attitude PID should go to zero while the proportion of manual desired rate should go to 1
+					// - by the time the stick gets to max_axislock_rate, the controller will have effectively transitioned to rate mode
 
-						// Reset accumulator
+					// higher rate factor -> behave more like rate mode
+					float const axislock_rate_factor = bound_min_max(fabsf(rateDesiredAxis[i]) / max_axislock_rate, 0.0f, 1.0f);
+
+					// reset the integral when we switch into rate mode
+					if (axislock_rate_factor >= 1.0f) {
 						axis_lock_accum[i] = 0;
 					} else {
-						// For weaker commands or no command simply lock (almost) on no gyro change
+						// axis lock
 						axis_lock_accum[i] += (stabDesiredAxis[i] - gyro_filtered[i]) * dT_expected;
-						axis_lock_accum[i] = bound_sym(axis_lock_accum[i], max_axis_lock);
-
+						axis_lock_accum[i] = bound_sym(axis_lock_accum[i], max_axis_lock * (1.0f - axislock_rate_factor));
 						// Compute the inner loop setpoint
-						float tmpRateDesired = pid_apply(&pids[PID_GROUP_ATT + i], axis_lock_accum[i], dT_expected);
-						rateDesiredAxis[i] = bound_sym(tmpRateDesired, settings.MaximumRate[i]);
+						float const tmpRateDesired = bound_sym(pid_apply(&pids[PID_GROUP_ATT + i], axis_lock_accum[i], dT_expected),settings.MaximumRate[i]);
+						// mix attitude and rate
+						rateDesiredAxis[i] = axislock_rate_factor * rateDesiredAxis[i] + (1.0f - axislock_rate_factor) * tmpRateDesired;
 					}
 
-					// Compute the inner loop
 					actuatorDesiredAxis[i] = compute_inner_loop_precomp(PID_GROUP_RATE, i, rateDesiredAxis[i], gyro_filtered[i], dT_expected);
 					actuatorDesiredAxis[i] = bound_sym(actuatorDesiredAxis[i],1.0f);
 
