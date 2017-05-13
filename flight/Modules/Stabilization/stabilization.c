@@ -67,9 +67,6 @@
 #include "misc_math.h"
 #include "smoothcontrol.h"
 
-// Includes for various stabilization algorithms
-#include "virtualflybar.h"
-
 // MAX_AXES expected to be present and equal to 3
 DONT_BUILD_IF((MAX_AXES+0 != 3), stabAxisWrongCount);
 
