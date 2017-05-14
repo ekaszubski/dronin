@@ -130,6 +130,8 @@ static uint8_t weak_leveling_max = 0;
 static bool lowThrottleZeroIntegral;
 static float max_rate_alpha = 0.8f;
 float vbar_decay = 0.991f;
+static float att_accum[MAX_AXES] = {0,0,0};
+float att_decay = 0.991f;
 
 struct pid pids[PID_MAX];
 smoothcontrol_state rc_smoothing;
@@ -364,6 +366,13 @@ static void stabilizationTask(void* parameters)
 				vbar_decay = 0;
 			} else {
 				vbar_decay = expf(-dT_expected / vbar_settings.VbarTau);
+			}
+
+			// Compute time constant for att decay term
+			if (settings.AttitudeInputSmoothing < 0.001f) {
+				att_decay = 0;
+			} else {
+				att_decay = expf(-dT_expected / settings.AttitudeInputSmoothing);
 			}
 
 			settings_flag = false;
@@ -657,6 +666,16 @@ static void stabilizationTask(void* parameters)
 					if(reinit) {
 						pids[PID_GROUP_ATT + i].iAccumulator = 0;
 						pids[PID_GROUP_RATE + i].iAccumulator = 0;
+						att_accum[i] = 0.0f;
+					}
+
+					// if attitude decay enabled, override local_attitude_error
+					if(att_decay > 0.001f)
+					{
+						// make the value we pass to the outer loop exponentially decay to this value
+						att_accum[i] += ((&trimmedAttitudeSetpoint.Roll)[i] - att_accum[i]) * (1.0f - att_decay);
+						//att_accum[i] = att_accum[i] * att_decay + (&trimmedAttitudeSetpoint.Roll)[i] * (1.0f - att_decay);
+						local_attitude_error[i] = att_accum[i] - (&attitudeActual.Roll)[i];
 					}
 
 					// Compute the outer loop
@@ -1011,9 +1030,6 @@ static void stabilizationTask(void* parameters)
 
 		// Register loop.
 		smoothcontrol_next(rc_smoothing);
-
-		if (vbar_settings.VbarPiroComp == VBARSETTINGS_VBARPIROCOMP_TRUE)
-			stabilization_virtual_flybar_pirocomp(gyro_filtered[YAW], dT_expected);
 
 #if defined(RATEDESIRED_DIAGNOSTICS)
 		RateDesiredSet(&rateDesired);

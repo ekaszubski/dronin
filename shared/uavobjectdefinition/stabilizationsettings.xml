@@ -55,6 +55,7 @@
 		<field name="RCControlSmoothing" units="" type="enum" elementnames="Axes,Thrust" options="None,Normal,Extended" defaultvalue="None">
 			<description>Enables different ways of input signal smoothing, to reduce excessive P- and D-term excitation in the PID controller. Normal and Extended modes chamfer the leading edges in combination with some amount of prediction, to avoid delay.</description>
 		</field>
+		<field name="AttitudeInputSmoothing" units="s" type="float" elements="1" defaultvalue="0"/>
 		<access gcs="readwrite" flight="readwrite"/>
 		<telemetrygcs acked="true" updatemode="onchange" period="0"/>
 		<telemetryflight acked="true" updatemode="onchange" period="0"/>
