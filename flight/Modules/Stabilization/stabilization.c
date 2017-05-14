@@ -673,8 +673,8 @@ static void stabilizationTask(void* parameters)
 					if(att_decay > 0.001f)
 					{
 						// make the value we pass to the outer loop exponentially decay to this value
-						att_accum[i] += ((&trimmedAttitudeSetpoint.Roll)[i] - att_accum[i]) * (1.0f - att_decay);
-						//att_accum[i] = att_accum[i] * att_decay + (&trimmedAttitudeSetpoint.Roll)[i] * (1.0f - att_decay);
+						//att_accum[i] += ((&trimmedAttitudeSetpoint.Roll)[i] - att_accum[i]) * (1.0f - att_decay);
+						att_accum[i] = bound_sym(att_accum[i] * att_decay + (&trimmedAttitudeSetpoint.Roll)[i] * (1.0f - att_decay), (&settings.RollMax)[i]);
 						local_attitude_error[i] = att_accum[i] - (&attitudeActual.Roll)[i];
 					}
 
